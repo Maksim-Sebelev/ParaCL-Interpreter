@@ -38,10 +38,6 @@ add_subdirectory(${AST_LIB_SRC_DIR})
 
 # =================================================================================================
 
-add_subdirectory(${PARACL_INTERPRETER_THIRD_PARTY_DIR}/ESD)
-
-# =================================================================================================
-
 # nametable library
 
 set(NAMETABLE_LIB nametable)
@@ -59,8 +55,6 @@ target_sources(${NAMETABLE_LIB}
     FILES
         ${NAMETABLE_SRC}
 )
-
-# add_target_stacktrace_dump_lib(nametable)
 
 # =================================================================================================
 # interpreter library
@@ -87,9 +81,8 @@ target_link_libraries(${INTERPRETER_LIB}
     TheLast::TheLast
 )
 
-# add_target_stacktrace_dump_lib(interpreter)
-
 # =================================================================================================
+
 
 set(INTERPRETER paracl-interpreter)
 
@@ -101,7 +94,5 @@ target_link_libraries(${INTERPRETER}
   PRIVATE
     ${INTERPRETER_LIB}
 )
-
-add_target_stacktrace_dump_lib(${INTERPRETER})
 
 # =================================================================================================

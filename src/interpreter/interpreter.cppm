@@ -19,7 +19,6 @@ module;
 #include <sstream>
 #include <stack>
 #include <vector>
-#include <cassert>
 
 #include <boost/json.hpp>
 
@@ -111,7 +110,7 @@ int visit(Variable const& node, interpreter::nametable::Nametable& nametable)
 {
     auto&& var_name = node.name();
     auto&& value = nametable.get_variable_value(var_name);
-
+    
     LOGINFO("paracl: interpreter: get variable '{}' = {}", var_name, value);
     return value;
 }
@@ -182,10 +181,12 @@ int visit(BinaryOperator const& node, interpreter::nametable::Nametable& nametab
 
     if (node.type() == BinaryOperator::ASGN)
     {
-        auto&& variable = static_cast<Variable const &>(node.larg());
-        nametable.set_value(variable.name(), right);
+        auto&& variable_name = static_cast<Variable>(node.larg()).name();
+        nametable.set_value(variable_name, right);
         return right;
     }
+
+    auto&& left = execute_expsession(node.larg(), nametable);
 
     switch (node.type())
     {
@@ -206,19 +207,19 @@ int visit(BinaryOperator const& node, interpreter::nametable::Nametable& nametab
     }
 
     /* left is a variable value, if we`re here */ 
-    auto&& variable = static_cast<Variable const &>(node.larg());
+    auto&& variable_name = static_cast<Variable>(node.larg()).name();
 
     switch (node.type())
     {
-        case BinaryOperator::ADDASGN: right += execute_expsession(node.larg(), nametable); break;
-        case BinaryOperator::SUBASGN: right -= execute_expsession(node.larg(), nametable); break;
-        case BinaryOperator::MULASGN: right *= execute_expsession(node.larg(), nametable); break;
-        case BinaryOperator::DIVASGN: right /= execute_expsession(node.larg(), nametable); break;
-        case BinaryOperator::REMASGN: right %= execute_expsession(node.larg(), nametable); break;
+        case BinaryOperator::ADDASGN: right += execute_expsession(node.larg(), nametable); nametable.set_value(variable_name, right);; break;
+        case BinaryOperator::SUBASGN: right -= execute_expsession(node.larg(), nametable); nametable.set_value(variable_name, right);; break;
+        case BinaryOperator::MULASGN: right *= execute_expsession(node.larg(), nametable); nametable.set_value(variable_name, right);; break;
+        case BinaryOperator::DIVASGN: right /= execute_expsession(node.larg(), nametable); nametable.set_value(variable_name, right);; break;
+        case BinaryOperator::REMASGN: right %= execute_expsession(node.larg(), nametable); nametable.set_value(variable_name, right);; break;
         default: __builtin_unreachable();
     }
 
-    nametable.set_value(variable.name(), right);
+    nametable.set_value(variable_name, right);
     return right;
 }
 
@@ -235,7 +236,7 @@ template <>
 void visit(While const& node, interpreter::nametable::Nametable& nametable)
 {
     LOGINFO("paracl: interpreter: execute WHILE statement");
-
+    
     while (execute_expsession(node.condition(), nametable))
         execute_statement(node.body(), nametable);
 }
@@ -247,7 +248,6 @@ template <>
 void visit(If const& node, interpreter::nametable::Nametable& nametable)
 {
     LOGINFO("paracl: interpreter: execute IF statement");
-
     if (not execute_expsession(node.condition(), nametable)) return;
     execute_statement(node.body(), nametable);
 }
@@ -270,7 +270,7 @@ template <>
 void visit(Else const& node, interpreter::nametable::Nametable& nametable)
 {
     LOGINFO("paracl: interpreter: execute ELSE statement");
-    execute_statement(node.body(), nametable);
+    return execute_statement(node.body(), nametable);
 }
 
 //-----------------------------------------------------------------------------
@@ -328,18 +328,18 @@ void visit(Scope const& node, interpreter::nametable::Nametable& nametable)
 //-----------------------------------------------------------------------------
 
 
-SPECIALIZE_CREATE(last::node::Print          , last::node::dumpable, last::node::executable_statement                                                           )
-SPECIALIZE_CREATE(last::node::Scan           , last::node::dumpable, last::node::executable_expression , last::node::executable_statement                       )
-SPECIALIZE_CREATE(last::node::Variable       , last::node::dumpable, last::node::executable_expression , last::node::executable_statement                       )
-SPECIALIZE_CREATE(last::node::NumberLiteral  , last::node::dumpable, last::node::executable_expression , last::node::executable_statement                       )
-SPECIALIZE_CREATE(last::node::StringLiteral  , last::node::dumpable, last::node::printable_string                                                               )
-SPECIALIZE_CREATE(last::node::UnaryOperator  , last::node::dumpable, last::node::executable_statement  , last::node::executable_expression                      )
-SPECIALIZE_CREATE(last::node::BinaryOperator , last::node::dumpable, last::node::executable_statement  , last::node::executable_expression                      )
-SPECIALIZE_CREATE(last::node::While          , last::node::dumpable, last::node::executable_statement                                                           )
-SPECIALIZE_CREATE(last::node::If             , last::node::dumpable, last::node::executable_statement  , last::node::executable_if_with_return_codition_status  )
-SPECIALIZE_CREATE(last::node::Else           , last::node::dumpable, last::node::executable_statement                                                           )
-SPECIALIZE_CREATE(last::node::Condition      , last::node::dumpable, last::node::executable_statement                                                           )
-SPECIALIZE_CREATE(last::node::Scope          , last::node::dumpable, last::node::executable_statement                                                           )
+SPECIALIZE_CREATE(last::node::Print          , last::node::executable_statement                                                           )
+SPECIALIZE_CREATE(last::node::Scan           , last::node::executable_expression , last::node::executable_statement                       )
+SPECIALIZE_CREATE(last::node::Variable       , last::node::executable_expression , last::node::executable_statement                       )
+SPECIALIZE_CREATE(last::node::NumberLiteral  , last::node::executable_expression , last::node::executable_statement                       )
+SPECIALIZE_CREATE(last::node::StringLiteral  , last::node::printable_string                                                               )
+SPECIALIZE_CREATE(last::node::UnaryOperator  , last::node::executable_statement  , last::node::executable_expression                      )
+SPECIALIZE_CREATE(last::node::BinaryOperator , last::node::executable_statement  , last::node::executable_expression                      )
+SPECIALIZE_CREATE(last::node::While          , last::node::executable_statement                                                           )
+SPECIALIZE_CREATE(last::node::If             , last::node::executable_statement  , last::node::executable_if_with_return_codition_status  )
+SPECIALIZE_CREATE(last::node::Else           , last::node::executable_statement                                                           )
+SPECIALIZE_CREATE(last::node::Condition      , last::node::executable_statement                                                           )
+SPECIALIZE_CREATE(last::node::Scope          , last::node::executable_statement                                                           )
 
 //-----------------------------------------------------------------------------
 
@@ -364,7 +364,7 @@ void interpret(std::filesystem::path const & ast_txt)
     nametable::Nametable nametable;
     nametable.new_scope(); /* global scope */
 
-    execute_statement(ast.root(), nametable);
+    visit<void, nametable::Nametable&>(ast.root(), nametable);
 
     LOGINFO("paracl: interpreter: end");
 }

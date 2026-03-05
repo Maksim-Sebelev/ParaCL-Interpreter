@@ -1,6 +1,3 @@
 [submodule "third-party/THE-LAST"]
 	path = third-party/THE-LAST
 	url = https://github.com/Maksim-Sebelev/THE-LAST.git
-[submodule "third-party/ESD"]
-	path = third-party/ESD
-	url = https://github.com/Maksim-Sebelev/Exception-Stacktrace-Dump.git
