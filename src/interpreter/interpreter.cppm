@@ -187,38 +187,39 @@ int visit(BinaryOperator const& node, interpreter::nametable::Nametable& nametab
         return right;
     }
 
+    auto&& left = execute_expsession(node.larg(), nametable);
     switch (node.type())
     {
-        case BinaryOperator::AND:     return execute_expsession(node.larg(), nametable) && right; break;
-        case BinaryOperator::OR:      return execute_expsession(node.larg(), nametable) || right; break;
-        case BinaryOperator::ADD:     return execute_expsession(node.larg(), nametable) +  right; break;
-        case BinaryOperator::SUB:     return execute_expsession(node.larg(), nametable) -  right; break;
-        case BinaryOperator::MUL:     return execute_expsession(node.larg(), nametable) *  right; break;
-        case BinaryOperator::DIV:     return execute_expsession(node.larg(), nametable) /  right; break;
-        case BinaryOperator::REM:     return execute_expsession(node.larg(), nametable) %  right; break;
-        case BinaryOperator::ISAB:    return execute_expsession(node.larg(), nametable) >  right; break;
-        case BinaryOperator::ISABE:   return execute_expsession(node.larg(), nametable) >= right; break;
-        case BinaryOperator::ISLS:    return execute_expsession(node.larg(), nametable) <  right; break;
-        case BinaryOperator::ISLSE:   return execute_expsession(node.larg(), nametable) <= right; break;
-        case BinaryOperator::ISEQ:    return execute_expsession(node.larg(), nametable) == right; break;
-        case BinaryOperator::ISNE:    return execute_expsession(node.larg(), nametable) != right; break;
+        case BinaryOperator::AND:     return left && right;
+        case BinaryOperator::OR:      return left || right;
+        case BinaryOperator::ADD:     return left +  right;
+        case BinaryOperator::SUB:     return left -  right;
+        case BinaryOperator::MUL:     return left *  right;
+        case BinaryOperator::DIV:     return left /  right;
+        case BinaryOperator::REM:     return left %  right;
+        case BinaryOperator::ISAB:    return left >  right;
+        case BinaryOperator::ISABE:   return left >= right;
+        case BinaryOperator::ISLS:    return left <  right;
+        case BinaryOperator::ISLSE:   return left <= right;
+        case BinaryOperator::ISEQ:    return left == right;
+        case BinaryOperator::ISNE:    return left != right;
         default: break;
     }
 
     /* left is a variable value, if we`re here */ 
-    auto&& variable = static_cast<Variable const &>(node.larg());
 
     switch (node.type())
     {
-        case BinaryOperator::ADDASGN: right += execute_expsession(node.larg(), nametable); break;
-        case BinaryOperator::SUBASGN: right -= execute_expsession(node.larg(), nametable); break;
-        case BinaryOperator::MULASGN: right *= execute_expsession(node.larg(), nametable); break;
-        case BinaryOperator::DIVASGN: right /= execute_expsession(node.larg(), nametable); break;
-        case BinaryOperator::REMASGN: right %= execute_expsession(node.larg(), nametable); break;
+        case BinaryOperator::ADDASGN: left += right; break;
+        case BinaryOperator::SUBASGN: left -= right; break;
+        case BinaryOperator::MULASGN: left *= right; break;
+        case BinaryOperator::DIVASGN: left /= right; break;
+        case BinaryOperator::REMASGN: left %= right; break;
         default: __builtin_unreachable();
     }
 
-    nametable.set_value(variable.name(), right);
+    auto&& variable = static_cast<Variable const &>(node.larg());
+    nametable.set_value(variable.name(), left);
     return right;
 }
 
