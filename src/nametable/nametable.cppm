@@ -7,6 +7,7 @@ module;
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <iostream>
 
 #define LOGINFO(...)
 #define LOGERR(...)
@@ -61,8 +62,13 @@ int Nametable::get_variable_value(std::string_view name) const
 {
     LOGINFO("paracl: interpreter: nametable: searching variable: \"{}\"", name);
 
+    std::cout << "Parse request in nametable: " << name << "\n";
     for (auto&& scope : scopes_ | std::views::reverse)
     {
+        std::cout << "new scope:\n";
+        for (auto&& arg: scope)
+            std::cout << arg.first << " ";
+        std::cout << std::endl; 
         auto&& found = scope.find(name);
         if (found == scope.end()) continue;
         LOGINFO("paracl: interpreter: nametable: variable found: \"{}\" = {}", name, found->second);
