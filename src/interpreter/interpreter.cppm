@@ -178,16 +178,18 @@ template <>
 int visit(BinaryOperator const& node, interpreter::nametable::Nametable& nametable)
 {
     /* not geting left, cause it can be a not init variable */
-    auto&& right = execute_expsession(node.rarg(), nametable);
+    /* not geting right, cause left must be execute earlier */
 
     if (node.type() == BinaryOperator::ASGN)
     {
         auto&& variable = static_cast<Variable const &>(node.larg());
+        auto&& right = execute_expsession(node.rarg(), nametable);
         nametable.set_value(variable.name(), right);
         return right;
     }
 
     auto&& left = execute_expsession(node.larg(), nametable);
+    auto&& right = execute_expsession(node.rarg(), nametable);
 
     switch (node.type())
     {
@@ -363,6 +365,8 @@ void interpret(std::filesystem::path const & ast_txt)
     LOGINFO("paracl: interpreter: start");
 
     auto&& ast = last::read(ast_txt);
+
+    last::dump(ast, "ast.dot", "ast.svg");
 
     nametable::Nametable nametable;
     nametable.new_scope(); /* global scope */
