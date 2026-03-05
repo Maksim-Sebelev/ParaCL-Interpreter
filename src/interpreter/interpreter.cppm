@@ -286,7 +286,8 @@ void visit(Condition const& node, interpreter::nametable::Nametable& nametable)
     for (auto&& if_node : node.get_ifs())
         if (execute_if_with_return_codition_status(if_node, nametable)) return;
 
-    return execute_statement(node.get_else(), nametable);
+    if (not node.has_else()) return;
+    execute_statement(node.get_else(), nametable);
 }
 
 //-----------------------------------------------------------------------------
