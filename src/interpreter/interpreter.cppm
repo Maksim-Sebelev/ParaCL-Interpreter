@@ -188,6 +188,7 @@ int visit(BinaryOperator const& node, interpreter::nametable::Nametable& nametab
     }
 
     auto&& left = execute_expsession(node.larg(), nametable);
+
     switch (node.type())
     {
         case BinaryOperator::AND:     return left && right;
@@ -220,7 +221,7 @@ int visit(BinaryOperator const& node, interpreter::nametable::Nametable& nametab
 
     auto&& variable = static_cast<Variable const &>(node.larg());
     nametable.set_value(variable.name(), left);
-    return right;
+    return left;
 }
 
 template <>
