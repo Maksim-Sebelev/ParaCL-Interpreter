@@ -20,6 +20,8 @@ module;
 #include <stack>
 #include <vector>
 
+#include <boost/json.hpp>
+
 #include "create-basic-node.hpp"
 
 #define LOGINFO(...)
@@ -29,8 +31,6 @@ export module interpreter;
 
 import nametable;
 import thelast;
-// import ast_read;
-
 
 //-----------------------------------------------------------------------------
 
@@ -86,7 +86,7 @@ namespace last::node::visit_specializations
 // SCAN
 //-----------------------------------------------------------------------------
 template <>
-int visit(Scan const& scan, interpreter::nametable::Nametable& nametable)
+int visit(Scan const& node, interpreter::nametable::Nametable& nametable)
 {
     int value;
     std::cin >> value;
@@ -97,18 +97,18 @@ int visit(Scan const& scan, interpreter::nametable::Nametable& nametable)
 //-----------------------------------------------------------------------------
 
 template <>
-void visit(Scan const& scan, interpreter::nametable::Nametable& nametable)
+void visit(Scan const& node, interpreter::nametable::Nametable& nametable)
 {
-    (void) visit<Scan, int, interpreter::nametable::Nametable&>(scan, nametable);
+    (void) visit<Scan, int, interpreter::nametable::Nametable&>(node, nametable);
 }
 
 //-----------------------------------------------------------------------------
 // VARIABLE
 //-----------------------------------------------------------------------------
 template <>
-int visit(Variable const& var, interpreter::nametable::Nametable& nametable)
+int visit(Variable const& node, interpreter::nametable::Nametable& nametable)
 {
-    auto&& var_name = var.name();
+    auto&& var_name = node.name();
     auto&& value = nametable.get_variable_value(var_name);
     
     LOGINFO("paracl: interpreter: get variable '{}' = {}", var_name, value);
@@ -116,46 +116,46 @@ int visit(Variable const& var, interpreter::nametable::Nametable& nametable)
 }
 
 template <>
-void visit(Variable const& var, interpreter::nametable::Nametable& nametable)
+void visit(Variable const& node, interpreter::nametable::Nametable& nametable)
 {
-    (void) visit<Variable, int, interpreter::nametable::Nametable&>(var, nametable);
+    (void) visit<Variable, int, interpreter::nametable::Nametable&>(node, nametable);
 }
 
 //-----------------------------------------------------------------------------
 // NUMBER LITERAL
 //-----------------------------------------------------------------------------
 template <>
-int visit(NumberLiteral const& num, interpreter::nametable::Nametable& nametable)
+int visit(NumberLiteral const& node, interpreter::nametable::Nametable& nametable)
 {
-    LOGINFO("paracl: interpreter: number literal: {}", num.value());
-    return num.value();
+    LOGINFO("paracl: interpreter: number literal: {}", node.value());
+    return node.value();
 }
 
 template <>
-void visit(NumberLiteral const& num, interpreter::nametable::Nametable& nametable)
+void visit(NumberLiteral const& node, interpreter::nametable::Nametable& nametable)
 {
-    (void) visit<NumberLiteral, int, interpreter::nametable::Nametable&>(num, nametable);
+    (void) visit<NumberLiteral, int, interpreter::nametable::Nametable&>(node, nametable);
 }
 
 //-----------------------------------------------------------------------------
 // STRING LITERAL
 //-----------------------------------------------------------------------------
 template <>
-std::string_view visit(StringLiteral const& str)
+std::string_view visit(StringLiteral const& node)
 {
-    LOGINFO("paracl: interpreter: string literal: \"{}\"", str.value());
-    return str.value();
+    LOGINFO("paracl: interpreter: string literal: \"{}\"", node.value());
+    return node.value();
 }
 
 //-----------------------------------------------------------------------------
 // UNARY OPERATOR
 //-----------------------------------------------------------------------------
 template <>
-int visit(UnaryOperator const& unary, interpreter::nametable::Nametable& nametable)
+int visit(UnaryOperator const& node, interpreter::nametable::Nametable& nametable)
 {
-    auto&& arg_value = execute_expsession(unary.arg(), nametable);
+    auto&& arg_value = execute_expsession(node.arg(), nametable);
     
-    switch (unary.type())
+    switch (node.type())
     {
         case UnaryOperator::MINUS: return -arg_value;
         case UnaryOperator::PLUS:  return +arg_value;
@@ -165,83 +165,101 @@ int visit(UnaryOperator const& unary, interpreter::nametable::Nametable& nametab
 }
 
 template <>
-void visit(UnaryOperator const& unary, interpreter::nametable::Nametable& nametable)
+void visit(UnaryOperator const& node, interpreter::nametable::Nametable& nametable)
 {
-    (void) visit<UnaryOperator, int, interpreter::nametable::Nametable&>(unary, nametable);
+    (void) visit<UnaryOperator, int, interpreter::nametable::Nametable&>(node, nametable);
 }
 
 //-----------------------------------------------------------------------------
 // BINARY OPERATOR
 //-----------------------------------------------------------------------------
 template <>
-int visit(BinaryOperator const& bin, interpreter::nametable::Nametable& nametable)
+int visit(BinaryOperator const& node, interpreter::nametable::Nametable& nametable)
 {
-    auto&& left = execute_expsession(bin.larg(), nametable);
-    auto&& right = execute_expsession(bin.rarg(), nametable);
+    /* not geting left, cause it can be a not init variable */
+    auto&& right = execute_expsession(node.rarg(), nametable);
 
-    switch (bin.type())
+    if (node.type() == BinaryOperator::ASGN)
     {
-        case BinaryOperator::AND:     return left && right; break;
-        case BinaryOperator::OR:      return left || right; break;
-        case BinaryOperator::ADD:     return left + right; break;
-        case BinaryOperator::SUB:     return left - right; break;
-        case BinaryOperator::MUL:     return left * right; break;
-        case BinaryOperator::DIV:     return left / right; break;
-        case BinaryOperator::REM:     return left % right; break;
-        case BinaryOperator::ISAB:    return left > right; break;
-        case BinaryOperator::ISABE:   return left >= right; break;
-        case BinaryOperator::ISLS:    return left < right; break;
-        case BinaryOperator::ISLSE:   return left <= right; break;
-        case BinaryOperator::ISEQ:    return left == right; break;
-        case BinaryOperator::ISNE:    return left != right; break;
-        case BinaryOperator::ASGN:
-        case BinaryOperator::ADDASGN:
-        case BinaryOperator::SUBASGN:
-        case BinaryOperator::MULASGN:
-        case BinaryOperator::DIVASGN:
-        case BinaryOperator::REMASGN:
-            throw std::runtime_error("Assignment operators should be handled by statement nodes");
+        auto&& variable_name = static_cast<Variable>(node.larg()).name();
+        nametable.set_value(variable_name, right);
+        return right;
+    }
+
+    auto&& left = execute_expsession(node.larg(), nametable);
+
+    switch (node.type())
+    {
+        case BinaryOperator::AND:     return execute_expsession(node.larg(), nametable) && right; break;
+        case BinaryOperator::OR:      return execute_expsession(node.larg(), nametable) || right; break;
+        case BinaryOperator::ADD:     return execute_expsession(node.larg(), nametable) +  right; break;
+        case BinaryOperator::SUB:     return execute_expsession(node.larg(), nametable) -  right; break;
+        case BinaryOperator::MUL:     return execute_expsession(node.larg(), nametable) *  right; break;
+        case BinaryOperator::DIV:     return execute_expsession(node.larg(), nametable) /  right; break;
+        case BinaryOperator::REM:     return execute_expsession(node.larg(), nametable) %  right; break;
+        case BinaryOperator::ISAB:    return execute_expsession(node.larg(), nametable) >  right; break;
+        case BinaryOperator::ISABE:   return execute_expsession(node.larg(), nametable) >= right; break;
+        case BinaryOperator::ISLS:    return execute_expsession(node.larg(), nametable) <  right; break;
+        case BinaryOperator::ISLSE:   return execute_expsession(node.larg(), nametable) <= right; break;
+        case BinaryOperator::ISEQ:    return execute_expsession(node.larg(), nametable) == right; break;
+        case BinaryOperator::ISNE:    return execute_expsession(node.larg(), nametable) != right; break;
+        default: break;
+    }
+
+    /* left is a variable value, if we`re here */ 
+    auto&& variable_name = static_cast<Variable>(node.larg()).name();
+
+    switch (node.type())
+    {
+        case BinaryOperator::ADDASGN: right += execute_expsession(node.larg(), nametable); nametable.set_value(variable_name, right);; break;
+        case BinaryOperator::SUBASGN: right -= execute_expsession(node.larg(), nametable); nametable.set_value(variable_name, right);; break;
+        case BinaryOperator::MULASGN: right *= execute_expsession(node.larg(), nametable); nametable.set_value(variable_name, right);; break;
+        case BinaryOperator::DIVASGN: right /= execute_expsession(node.larg(), nametable); nametable.set_value(variable_name, right);; break;
+        case BinaryOperator::REMASGN: right %= execute_expsession(node.larg(), nametable); nametable.set_value(variable_name, right);; break;
         default: __builtin_unreachable();
     }
+
+    nametable.set_value(variable_name, right);
+    return right;
 }
 
 template <>
-void visit(BinaryOperator const& bin, interpreter::nametable::Nametable& nametable)
+void visit(BinaryOperator const& node, interpreter::nametable::Nametable& nametable)
 {
-    (void) visit<BinaryOperator, int, interpreter::nametable::Nametable&>(bin, nametable);
+    (void) visit<BinaryOperator, int, interpreter::nametable::Nametable&>(node, nametable);
 }
 
 //-----------------------------------------------------------------------------
 // WHILE
 //-----------------------------------------------------------------------------
 template <>
-void visit(While const& while_node, interpreter::nametable::Nametable& nametable)
+void visit(While const& node, interpreter::nametable::Nametable& nametable)
 {
     LOGINFO("paracl: interpreter: execute WHILE statement");
     
-    while (execute_expsession(while_node.condition(), nametable))
-        execute_statement(while_node.body(), nametable);
+    while (execute_expsession(node.condition(), nametable))
+        execute_statement(node.body(), nametable);
 }
 
 //-----------------------------------------------------------------------------
 // IF
 //-----------------------------------------------------------------------------
 template <>
-void visit(If const& if_node, interpreter::nametable::Nametable& nametable)
+void visit(If const& node, interpreter::nametable::Nametable& nametable)
 {
     LOGINFO("paracl: interpreter: execute IF statement");
-    if (not execute_expsession(if_node.condition(), nametable)) return;
-    execute_statement(if_node.body(), nametable);
+    if (not execute_expsession(node.condition(), nametable)) return;
+    execute_statement(node.body(), nametable);
 }
 
 //-----------------------------------------------------------------------------
 
 template <>
-bool visit(If const& if_node, interpreter::nametable::Nametable& nametable)
+bool visit(If const& node, interpreter::nametable::Nametable& nametable)
 {
     LOGINFO("paracl: interpreter: execute IF statement");
-    if (not execute_expsession(if_node.condition(), nametable)) return false;
-    execute_statement(if_node.body(), nametable);
+    if (not execute_expsession(node.condition(), nametable)) return false;
+    execute_statement(node.body(), nametable);
     return true;
 }
 
@@ -249,25 +267,25 @@ bool visit(If const& if_node, interpreter::nametable::Nametable& nametable)
 // ELSE
 //-----------------------------------------------------------------------------
 template <>
-void visit(Else const& else_node, interpreter::nametable::Nametable& nametable)
+void visit(Else const& node, interpreter::nametable::Nametable& nametable)
 {
     LOGINFO("paracl: interpreter: execute ELSE statement");
-    return execute_statement(else_node.body(), nametable);
+    return execute_statement(node.body(), nametable);
 }
 
 //-----------------------------------------------------------------------------
 // CONDITION
 //-----------------------------------------------------------------------------
 template <>
-void visit(Condition const& condition, interpreter::nametable::Nametable& nametable)
+void visit(Condition const& node, interpreter::nametable::Nametable& nametable)
 {
     LOGINFO("paracl: interpreter: execute CONDITION statement");
     
     // Проверяем все if-ы по порядку
-    for (auto&& if_node : condition.get_ifs())
+    for (auto&& if_node : node.get_ifs())
         if (execute_if_with_return_codition_status(if_node, nametable)) return;
 
-    return execute_statement(condition.get_else(), nametable);
+    return execute_statement(node.get_else(), nametable);
 }
 
 //-----------------------------------------------------------------------------
@@ -275,11 +293,11 @@ void visit(Condition const& condition, interpreter::nametable::Nametable& nameta
 //-----------------------------------------------------------------------------
 
 template <>
-void visit(Print const& print, interpreter::nametable::Nametable& nametable)
+void visit(Print const& node, interpreter::nametable::Nametable& nametable)
 {
     LOGINFO("paracl: interpreter: execute print statement");
 
-    for (auto&& arg : print)
+    for (auto&& arg : node)
     {
         if (support<printable_string>(arg))
             std::cout << print_string(arg);
@@ -306,22 +324,22 @@ void visit(Scope const& node, interpreter::nametable::Nametable& nametable)
 }
 
 //-----------------------------------------------------------------------------
-} /* namespace last::ndoe::visit_specializatoins */
+} /* namespace last::node::visit_specializations */
 //-----------------------------------------------------------------------------
 
 
-SPECIALIZE_CREATE(last::node::Print          , last::node::executable_statement                        )
-SPECIALIZE_CREATE(last::node::Scan           , last::node::executable_expression , last::node::executable_statement)
-SPECIALIZE_CREATE(last::node::Variable       , last::node::executable_expression , last::node::executable_statement)
-SPECIALIZE_CREATE(last::node::NumberLiteral  , last::node::executable_expression , last::node::executable_statement)
-SPECIALIZE_CREATE(last::node::StringLiteral  , last::node::printable_string                            )
-SPECIALIZE_CREATE(last::node::UnaryOperator  , last::node::executable_expression                       )
-SPECIALIZE_CREATE(last::node::BinaryOperator , last::node::executable_expression                       )
-SPECIALIZE_CREATE(last::node::While          , last::node::executable_statement                        )
-SPECIALIZE_CREATE(last::node::If             , last::node::executable_statement  , last::node::executable_if_with_return_codition_status)
-SPECIALIZE_CREATE(last::node::Else           , last::node::executable_statement                        )
-SPECIALIZE_CREATE(last::node::Condition      , last::node::executable_statement                        )
-SPECIALIZE_CREATE(last::node::Scope          , last::node::executable_statement                        )
+SPECIALIZE_CREATE(last::node::Print          , last::node::executable_statement                                                           )
+SPECIALIZE_CREATE(last::node::Scan           , last::node::executable_expression , last::node::executable_statement                       )
+SPECIALIZE_CREATE(last::node::Variable       , last::node::executable_expression , last::node::executable_statement                       )
+SPECIALIZE_CREATE(last::node::NumberLiteral  , last::node::executable_expression , last::node::executable_statement                       )
+SPECIALIZE_CREATE(last::node::StringLiteral  , last::node::printable_string                                                               )
+SPECIALIZE_CREATE(last::node::UnaryOperator  , last::node::executable_statement  , last::node::executable_expression                      )
+SPECIALIZE_CREATE(last::node::BinaryOperator , last::node::executable_statement  , last::node::executable_expression                      )
+SPECIALIZE_CREATE(last::node::While          , last::node::executable_statement                                                           )
+SPECIALIZE_CREATE(last::node::If             , last::node::executable_statement  , last::node::executable_if_with_return_codition_status  )
+SPECIALIZE_CREATE(last::node::Else           , last::node::executable_statement                                                           )
+SPECIALIZE_CREATE(last::node::Condition      , last::node::executable_statement                                                           )
+SPECIALIZE_CREATE(last::node::Scope          , last::node::executable_statement                                                           )
 
 //-----------------------------------------------------------------------------
 
@@ -330,7 +348,7 @@ SPECIALIZE_CREATE(last::node::Scope          , last::node::executable_statement 
 #undef THELAST_READ_AST_NO_INCLUDES
 
 //-----------------------------------------------------------------------------
-
+ 
 namespace interpreter
 {
 
@@ -346,7 +364,7 @@ void interpret(std::filesystem::path const & ast_txt)
     nametable::Nametable nametable;
     nametable.new_scope(); /* global scope */
 
-    visit<void, nametable::Nametable&>(ast.root(), nametable);    
+    visit<void, nametable::Nametable&>(ast.root(), nametable);
 
     LOGINFO("paracl: interpreter: end");
 }

@@ -27,15 +27,13 @@ string(TIMESTAMP CURRENT_TIME "%Y-%m-%d %H:%M:%S")
 
 # =================================================================================================
 
-set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
-set(INC_DIR ${PROJECT_SOURCE_DIR}/include)
-set(THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/third-party)
+set(PARACL_INTERPRETER_SRC_DIR ${PROJECT_SOURCE_DIR}/src)
+set(PARACL_INTERPRETER_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/third-party)
 
 # =================================================================================================
 # add ast library
 
-set(AST_LIB_SRC_DIR ${THIRD_PARTY_DIR}/THE-LAST)
-
+set(AST_LIB_SRC_DIR ${PARACL_INTERPRETER_THIRD_PARTY_DIR}/THE-LAST)
 add_subdirectory(${AST_LIB_SRC_DIR})
 
 # =================================================================================================
@@ -45,7 +43,7 @@ add_subdirectory(${AST_LIB_SRC_DIR})
 set(NAMETABLE_LIB nametable)
 add_library(${NAMETABLE_LIB})
 
-set(NAMETABLE_SRC_DIR ${SRC_DIR}/nametable)
+set(NAMETABLE_SRC_DIR ${PARACL_INTERPRETER_SRC_DIR}/nametable)
 set(NAMETABLE_SRC
     ${NAMETABLE_SRC_DIR}/nametable.cppm
 )
@@ -64,7 +62,7 @@ target_sources(${NAMETABLE_LIB}
 set(INTERPRETER_LIB interpreter)
 add_library(${INTERPRETER_LIB})
 
-set(INTERPRETER_SRC_DIR ${SRC_DIR}/interpreter)
+set(INTERPRETER_SRC_DIR ${PARACL_INTERPRETER_SRC_DIR}/interpreter)
 set(INTERPRETER_SRC
     ${INTERPRETER_SRC_DIR}/interpreter.cppm
 )
@@ -85,13 +83,15 @@ target_link_libraries(${INTERPRETER_LIB}
 
 # =================================================================================================
 
-add_executable(test
-${SRC_DIR}/main.cpp
+
+set(INTERPRETER paracl-interpreter)
+
+add_executable(${INTERPRETER}
+    ${PARACL_INTERPRETER_SRC_DIR}/main.cpp
 )
 
-
-target_link_libraries(test
-PRIVATE
+target_link_libraries(${INTERPRETER}
+  PRIVATE
     ${INTERPRETER_LIB}
 )
 
